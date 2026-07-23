@@ -35,9 +35,9 @@
 
       <div class="sidebar-footer">
         <div class="user-info" v-show="!collapsed">
-          <div class="user-avatar">ES</div>
+          <div class="user-avatar">SA</div>
           <div class="user-details">
-            <span class="user-name">Esteban C.</span>
+            <span class="user-name">Santander.</span>
             <span class="user-role">Administrador</span>
           </div>
         </div>

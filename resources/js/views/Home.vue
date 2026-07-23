@@ -20,7 +20,7 @@
             <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
           </svg>
         </div>
-        <p>Aquí irá el contenido de Opción 1</p>
+        <p>&nbsp;</p>
       </div>
     </div>
   </div>
