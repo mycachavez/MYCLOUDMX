@@ -11,32 +11,85 @@ jobs:
 
     steps:
 
+      # ==========================================
+      # 1. Descargar el código desde GitHub
+      # ==========================================
       - name: Checkout repository
         uses: actions/checkout@v4
 
+
+      # ==========================================
+      # 2. Configurar PHP
+      # ==========================================
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
           extensions: mbstring, bcmath, pdo, pdo_mysql
           tools: composer
+          coverage: none
 
+
+      # ==========================================
+      # 3. Instalar dependencias de Laravel
+      # ==========================================
       - name: Install Composer dependencies
-        run: composer install --no-dev --optimize-autoloader --no-interaction
+        run: |
+          composer install \
+            --no-dev \
+            --optimize-autoloader \
+            --no-interaction \
+            --prefer-dist
 
+
+      # ==========================================
+      # 4. Configurar Node.js
+      # ==========================================
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
+
+      # ==========================================
+      # 5. Instalar dependencias de Vue/Vite
+      # ==========================================
       - name: Install NPM dependencies
         run: npm ci
 
+
+      # ==========================================
+      # 6. Compilar frontend Vue/Vite
+      # ==========================================
       - name: Build frontend
         run: npm run build
 
-      - name: Deploy to cPanel
+
+      # ==========================================
+      # 7. Copiar archivos al servidor cPanel
+      # ==========================================
+      - name: Upload files to cPanel
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+
+          source: "app,bootstrap,config,database,public,resources,routes,composer.json,composer.lock,package.json,package-lock.json,vite.config.js"
+
+          target: ${{ secrets.CPANEL_PROJECT_PATH }}
+
+          overwrite: true
+
+          rm: false
+
+
+      # ==========================================
+      # 8. Ejecutar comandos Laravel en cPanel
+      # ==========================================
+      - name: Run Laravel deployment commands
         uses: appleboy/ssh-action@v1.2.2
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -47,32 +100,51 @@ jobs:
           script: |
             set -e
 
+            echo "======================================"
+            echo "Iniciando deploy de Laravel"
+            echo "======================================"
+
             cd "${{ secrets.CPANEL_PROJECT_PATH }}"
 
-            echo "Actualizando código..."
+            echo ""
+            echo "Directorio actual:"
+            pwd
 
-            git fetch origin main
-            git reset --hard origin/main
-
-            echo "Instalando dependencias..."
+            echo ""
+            echo "Instalando dependencias de Composer..."
 
             composer install \
               --no-dev \
               --optimize-autoloader \
-              --no-interaction
+              --no-interaction \
+              --prefer-dist
 
+            echo ""
             echo "Ejecutando migraciones..."
 
             php artisan migrate --force
 
-            echo "Limpiando caché..."
+            echo ""
+            echo "Limpiando cachés..."
 
             php artisan optimize:clear
 
-            echo "Generando caché..."
+            echo ""
+            echo "Generando caché de configuración..."
 
             php artisan config:cache
+
+            echo ""
+            echo "Generando caché de rutas..."
+
             php artisan route:cache
+
+            echo ""
+            echo "Generando caché de vistas..."
+
             php artisan view:cache
 
-            echo "Deploy completado correctamente."
+            echo ""
+            echo "======================================"
+            echo "Deploy completado correctamente"
+            echo "======================================"
