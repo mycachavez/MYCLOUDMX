@@ -1,4 +1,42 @@
-      - name: Run Laravel deployment commands
+name: Deploy Laravel + Vue
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, bcmath, pdo, pdo_mysql
+          tools: composer
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader --no-interaction
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install NPM dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Deploy to cPanel
         uses: appleboy/ssh-action@v1.2.2
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -9,117 +47,32 @@
           script: |
             set -e
 
-            echo "======================================"
-            echo "Iniciando deploy de Laravel"
-            echo "======================================"
-
-            # ==========================================
-            # Configurar directorio de Composer
-            # ==========================================
-
-            export PATH="$HOME/bin:$PATH"
-
-            mkdir -p "$HOME/bin"
-
-            # ==========================================
-            # Instalar Composer si no existe
-            # ==========================================
-
-            if ! command -v composer >/dev/null 2>&1; then
-
-              echo "Composer no encontrado."
-
-              echo "Instalando Composer..."
-
-              cd "$HOME"
-
-              php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-
-              php composer-setup.php \
-                --install-dir="$HOME/bin" \
-                --filename=composer
-
-              rm -f composer-setup.php
-
-              echo "Composer instalado correctamente."
-
-            else
-
-              echo "Composer ya está instalado."
-
-            fi
-
-            # ==========================================
-            # Verificar Composer
-            # ==========================================
-
-            echo ""
-            echo "Versión de Composer:"
-
-            composer --version
-
-            # ==========================================
-            # Ir al proyecto
-            # ==========================================
-
             cd "${{ secrets.CPANEL_PROJECT_PATH }}"
 
-            echo ""
-            echo "Directorio actual:"
+            echo "Actualizando código..."
 
-            pwd
+            git fetch origin main
+            git reset --hard origin/main
 
-            # ==========================================
-            # Instalar dependencias Laravel
-            # ==========================================
-
-            echo ""
-            echo "Instalando dependencias de Composer..."
+            echo "Instalando dependencias..."
 
             composer install \
               --no-dev \
               --optimize-autoloader \
-              --no-interaction \
-              --prefer-dist
+              --no-interaction
 
-            # ==========================================
-            # Ejecutar migraciones
-            # ==========================================
-
-            echo ""
             echo "Ejecutando migraciones..."
 
             php artisan migrate --force
 
-            # ==========================================
-            # Limpiar cachés
-            # ==========================================
-
-            echo ""
-            echo "Limpiando cachés..."
+            echo "Limpiando caché..."
 
             php artisan optimize:clear
 
-            # ==========================================
-            # Generar cachés
-            # ==========================================
-
-            echo ""
-            echo "Generando caché de configuración..."
+            echo "Generando caché..."
 
             php artisan config:cache
-
-            echo ""
-            echo "Generando caché de rutas..."
-
             php artisan route:cache
-
-            echo ""
-            echo "Generando caché de vistas..."
-
             php artisan view:cache
 
-            echo ""
-            echo "======================================"
-            echo "Deploy completado correctamente"
-            echo "======================================"
+            echo "Deploy completado correctamente."
