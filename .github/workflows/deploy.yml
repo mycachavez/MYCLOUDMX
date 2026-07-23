@@ -11,9 +11,12 @@ jobs:
 
     steps:
 
+      # 1. Descargar código
       - name: Checkout repository
         uses: actions/checkout@v4
 
+
+      # 2. Configurar PHP
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -21,22 +24,58 @@ jobs:
           extensions: mbstring, bcmath, pdo, pdo_mysql
           tools: composer
 
-      - name: Install Composer dependencies
-        run: composer install --no-dev --optimize-autoloader --no-interaction
 
+      # 3. Instalar dependencias Laravel
+      - name: Install Composer dependencies
+        run: |
+          composer install \
+            --no-dev \
+            --optimize-autoloader \
+            --no-interaction
+
+
+      # 4. Configurar Node
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
+
+      # 5. Instalar dependencias Vue
       - name: Install NPM dependencies
         run: npm ci
 
+
+      # 6. Compilar Vue/Vite
       - name: Build frontend
         run: npm run build
 
-      - name: Deploy to cPanel
+
+      # 7. Copiar archivos al servidor
+      - name: Deploy files with rsync
+        uses: burnett01/rsync-deployments@7.0.2
+        with:
+          switches: -avzr --delete
+          path: ./
+          remote_path: ${{ secrets.CPANEL_PROJECT_PATH }}
+          remote_host: ${{ secrets.SSH_HOST }}
+          remote_user: ${{ secrets.SSH_USER }}
+          remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          remote_port: ${{ secrets.SSH_PORT }}
+          exclude: |
+            .git/
+            .github/
+            node_modules/
+            .env
+            storage/logs/
+            storage/framework/cache/
+            storage/framework/sessions/
+            storage/framework/views/
+
+
+      # 8. Ejecutar comandos en servidor
+      - name: Run Laravel commands
         uses: appleboy/ssh-action@v1.2.2
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -45,34 +84,29 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
 
           script: |
-            set -e
 
             cd "${{ secrets.CPANEL_PROJECT_PATH }}"
 
-            echo "Actualizando código..."
+            echo "Instalando permisos..."
 
-            git fetch origin main
-            git reset --hard origin/main
+            chmod -R 775 storage bootstrap/cache
 
-            echo "Instalando dependencias..."
 
-            composer install \
-              --no-dev \
-              --optimize-autoloader \
-              --no-interaction
-
-            echo "Ejecutando migraciones..."
+            echo "Migraciones..."
 
             php artisan migrate --force
 
-            echo "Limpiando caché..."
+
+            echo "Limpiando cache..."
 
             php artisan optimize:clear
 
-            echo "Generando caché..."
+
+            echo "Generando cache..."
 
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
 
-            echo "Deploy completado correctamente."
+
+            echo "Deploy terminado correctamente"
