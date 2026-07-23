@@ -1,94 +1,3 @@
-name: Deploy Laravel + Vue
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-
-      # ==========================================
-      # 1. Descargar el código desde GitHub
-      # ==========================================
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-
-      # ==========================================
-      # 2. Configurar PHP
-      # ==========================================
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.3'
-          extensions: mbstring, bcmath, pdo, pdo_mysql
-          tools: composer
-          coverage: none
-
-
-      # ==========================================
-      # 3. Instalar dependencias de Laravel
-      # ==========================================
-      - name: Install Composer dependencies
-        run: |
-          composer install \
-            --no-dev \
-            --optimize-autoloader \
-            --no-interaction \
-            --prefer-dist
-
-
-      # ==========================================
-      # 4. Configurar Node.js
-      # ==========================================
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-
-      # ==========================================
-      # 5. Instalar dependencias de Vue/Vite
-      # ==========================================
-      - name: Install NPM dependencies
-        run: npm ci
-
-
-      # ==========================================
-      # 6. Compilar frontend Vue/Vite
-      # ==========================================
-      - name: Build frontend
-        run: npm run build
-
-
-      # ==========================================
-      # 7. Copiar archivos al servidor cPanel
-      # ==========================================
-      - name: Upload files to cPanel
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-
-          source: "app,bootstrap,config,database,public,resources,routes,composer.json,composer.lock,package.json,package-lock.json,vite.config.js"
-
-          target: ${{ secrets.CPANEL_PROJECT_PATH }}
-
-          overwrite: true
-
-          rm: false
-
-
-      # ==========================================
-      # 8. Ejecutar comandos Laravel en cPanel
-      # ==========================================
       - name: Run Laravel deployment commands
         uses: appleboy/ssh-action@v1.2.2
         with:
@@ -104,11 +13,65 @@ jobs:
             echo "Iniciando deploy de Laravel"
             echo "======================================"
 
+            # ==========================================
+            # Configurar directorio de Composer
+            # ==========================================
+
+            export PATH="$HOME/bin:$PATH"
+
+            mkdir -p "$HOME/bin"
+
+            # ==========================================
+            # Instalar Composer si no existe
+            # ==========================================
+
+            if ! command -v composer >/dev/null 2>&1; then
+
+              echo "Composer no encontrado."
+
+              echo "Instalando Composer..."
+
+              cd "$HOME"
+
+              php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+
+              php composer-setup.php \
+                --install-dir="$HOME/bin" \
+                --filename=composer
+
+              rm -f composer-setup.php
+
+              echo "Composer instalado correctamente."
+
+            else
+
+              echo "Composer ya está instalado."
+
+            fi
+
+            # ==========================================
+            # Verificar Composer
+            # ==========================================
+
+            echo ""
+            echo "Versión de Composer:"
+
+            composer --version
+
+            # ==========================================
+            # Ir al proyecto
+            # ==========================================
+
             cd "${{ secrets.CPANEL_PROJECT_PATH }}"
 
             echo ""
             echo "Directorio actual:"
+
             pwd
+
+            # ==========================================
+            # Instalar dependencias Laravel
+            # ==========================================
 
             echo ""
             echo "Instalando dependencias de Composer..."
@@ -119,15 +82,27 @@ jobs:
               --no-interaction \
               --prefer-dist
 
+            # ==========================================
+            # Ejecutar migraciones
+            # ==========================================
+
             echo ""
             echo "Ejecutando migraciones..."
 
             php artisan migrate --force
 
+            # ==========================================
+            # Limpiar cachés
+            # ==========================================
+
             echo ""
             echo "Limpiando cachés..."
 
             php artisan optimize:clear
+
+            # ==========================================
+            # Generar cachés
+            # ==========================================
 
             echo ""
             echo "Generando caché de configuración..."
