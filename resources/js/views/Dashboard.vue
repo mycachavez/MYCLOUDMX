@@ -35,7 +35,7 @@
 
       <div class="sidebar-footer">
         <div class="user-info" v-show="!collapsed">
-          <div class="user-avatar">{{ userInitials }}</div>
+          <div class="user-avatar">{{ userInitials }}.</div>
           <div class="user-details">
             <span class="user-name">{{ authStore.state.banco.banco_nombre  }}</span>
             <span class="user-role">Administrador</span>
