@@ -35,13 +35,13 @@
 
       <div class="sidebar-footer">
         <div class="user-info" v-show="!collapsed">
-          <div class="user-avatar">SA</div>
+          <div class="user-avatar">{{ userInitials }}</div>
           <div class="user-details">
-            <span class="user-name">Santander.</span>
+            <span class="user-name">{{ authStore.state.banco.banco_nombre  }}</span>
             <span class="user-role">Administrador</span>
           </div>
         </div>
-        <div class="user-avatar user-avatar--sm" v-show="collapsed">ES</div>
+        <div class="user-avatar user-avatar--sm" v-show="collapsed">{{ userInitials }}</div>
         <button class="logout-btn" @click="handleLogout" aria-label="Cerrar sesión">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -89,6 +89,7 @@ import Home from './Home.vue'
 import Caratulas from './Caratulas.vue'
 import ReportesDomicilio from './ReportesDomicilio.vue'
 import logo from '@/assets/images/logo.png'
+import { authStore } from '@/stores/auth'
 
 const router = useRouter()
 const route  = useRoute()
@@ -130,11 +131,18 @@ const menuItems = [
 
 const currentItem = computed(() => menuItems.find(i => i.path === route.path) ?? menuItems[0])
 
+const userInitials = computed(() => {
+   authStore.state.banco
+  const nombre = authStore.state.banco.nombres ?? ''
+  return nombre.slice(0, 2).toUpperCase()
+})
+
 function navigate(item) {
   router.push(item.path)
 }
 
-function handleLogout() {
-  window.location.href = '/login'
+async function handleLogout() {
+  await authStore.logout()
+  router.push('/login')
 }
 </script>

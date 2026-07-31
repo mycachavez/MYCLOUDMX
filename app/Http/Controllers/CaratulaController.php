@@ -9,12 +9,18 @@ class CaratulaController extends Controller
 {
    public function index(Request $request)
    {
+      $authBanco = $request->session()->get('auth_banco');
+
+      if (!$authBanco) {
+         return response()->json(['error' => 'No autenticado'], 401);
+      }
+
       $zapikey = config('services.zoho.zapikey');
 
       $url = "https://www.zohoapis.com/crm/v7/functions/myc_banco_caratulas/actions/execute" . "?auth_type=apikey&zapikey={$zapikey}";
 
       $response = Http::post($url, array_merge($request->all(), [
-         'banco' => 'Santander'
+         'banco' => $authBanco['banco_nombre']
       ]));
 
       if ($response->failed()) {

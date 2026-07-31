@@ -153,6 +153,9 @@
 import { ref, computed, onMounted } from 'vue'
 import VueDatePicker from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
+
+/*console.log('¿Logueado?', authStore.isAuthenticated)
+console.log('Datos del banco:', authStore.state.banco)*/
  
 const columns = [
    { key: 'Deal_Name',    label: 'Folio',    filterable: true },
@@ -196,7 +199,7 @@ async function fetchData(page = 1) {
          per_page: perPage,
          ...filtersToSend
       })
-      const res = await fetch(`/getCaratulas?${params}`, {
+      const res = await fetch(`/api/getCaratulas?${params}`, {
          headers: { 'Accept': 'application/json' }
       })
       if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`)

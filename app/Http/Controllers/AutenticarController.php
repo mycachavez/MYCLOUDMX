@@ -18,6 +18,36 @@ class AutenticarController extends Controller
          return response()->json(['error' => 'Error al autenticar'], 500);
       }
 
-      return response()->json($response->json());
+      $data = $response->json('data');
+
+      if (empty($data['banco_id'])) {
+         return response()->json(['error' => 'Credenciales inválidas'], 401);
+      }
+
+      // Guardamos el usuario/banco autenticado en la sesión de Laravel
+      $request->session()->put('auth_banco', [
+         'banco_id' => $data['banco_id'],
+         'banco_nombre' => $data['banco_nombre'],
+      ]);
+      $request->session()->regenerate();
+
+      return response()->json($data);
+
+      //return response()->json($response->json());
+   }
+
+   public function usuarioActual(Request $request){
+      if (!$request->session()->has('auth_banco')) {
+         return response()->json(['error' => 'No autenticado'], 401);
+      }
+
+      return response()->json($request->session()->get('auth_banco'));
+   }
+
+   public function logout(Request $request){
+      $request->session()->forget('auth_banco');
+      $request->session()->regenerate();
+
+      return response()->json(['message' => 'Sesión cerrada']);
    }
 }

@@ -82,7 +82,11 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
+import { useRouter } from 'vue-router'
 import logo from '@/assets/images/logo.png'
+import { authStore } from '@/stores/auth'
+
+const router = useRouter()
 
 const form = reactive({
   email: '',
@@ -130,29 +134,13 @@ async function handleLogin() {
   errorGeneral.value = ''
 
   try {
-    const response = await fetch('/autenticar', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
-      },
-      body: JSON.stringify({
-        email: form.email,
-        password: form.password,
-        remember: form.remember
-      })
+    await authStore.login({
+      email: form.email,
+      password: form.password,
     })
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      errorGeneral.value = data.message || 'Credenciales incorrectas.'
-    } else {
-      window.location.href = '/app/home'
-    }
+    router.push('/app/home')
   } catch (e) {
-    errorGeneral.value = 'Error de conexión. Intenta de nuevo.'
+    errorGeneral.value = e.response?.data?.error || 'Credenciales incorrectas.'
   } finally {
     loading.value = false
   }

@@ -6,6 +6,7 @@ import Dashboard from './views/Dashboard.vue'
 import Home from './views/Home.vue'
 import Caratulas from './views/Caratulas.vue'
 import ReportesDomicilio from './views/ReportesDomicilio.vue'
+import { authStore } from './stores/auth'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -16,6 +17,7 @@ const router = createRouter({
       path: '/app',
       component: Dashboard,
       redirect: '/app/home',
+      meta: { requiresAuth: true },
       children: [
         { path: 'home',               component: Home },
         { path: 'caratulas',          component: Caratulas },
@@ -23,6 +25,22 @@ const router = createRouter({
       ]
     },
   ]
+})
+
+router.beforeEach(async (to) => {
+  if (!authStore.state.checked) {
+    await authStore.fetchBanco()
+  }
+
+  console.log('¿Autenticado?', authStore.isAuthenticated, authStore.state.banco) // <-- temporal
+
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    return { path: '/login' }
+  }
+
+  if (to.path === '/login' && authStore.isAuthenticated) {
+    return { path: '/app/home' }
+  }
 })
 
 createApp(App).use(router).mount('#app')

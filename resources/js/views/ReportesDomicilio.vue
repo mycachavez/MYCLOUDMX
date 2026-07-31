@@ -193,7 +193,7 @@ async function fetchData(page = 1) {
          per_page: perPage,
          ...filtersToSend
       })
-      const res = await fetch(`/getReportesDomicilio?${params}`, {
+      const res = await fetch(`/api/getReportesDomicilio?${params}`, {
          headers: { 'Accept': 'application/json' }
       })
       if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`)
