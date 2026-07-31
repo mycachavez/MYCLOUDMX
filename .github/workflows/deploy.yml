@@ -68,6 +68,7 @@ jobs:
             .github/
             node_modules/
             .env
+            database/database.sqlite
             storage/logs/
             storage/framework/cache/
             storage/framework/sessions/
@@ -87,14 +88,30 @@ jobs:
 
             cd "${{ secrets.CPANEL_PROJECT_PATH }}"
 
+            echo "Verificando .env..."
+
+            if [ ! -f .env ]; then
+              echo "⚠️  .env no existe, deploy detenido. Créalo manualmente en el servidor."
+              exit 1
+            fi
+
+            echo "Verificando APP_KEY..."
+
+            if ! grep -qE "^APP_KEY=base64:.{40,}$" .env; then
+              echo "APP_KEY ausente o inválida, regenerando..."
+              sed -i '/^APP_KEY=/d' .env
+              printf '\n' >> .env
+              php artisan key:generate
+            fi
+
             echo "Instalando permisos..."
 
             chmod -R 775 storage bootstrap/cache
 
 
-            echo "Migraciones..."
+            echo "Enlazando storage..."
 
-            php artisan migrate --force
+            php artisan storage:link || true
 
 
             echo "Limpiando cache..."
